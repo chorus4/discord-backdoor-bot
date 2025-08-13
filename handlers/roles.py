@@ -26,7 +26,9 @@ class EditRolePermissionsCallback(CallbackData, prefix="eRP"):
 
 class DeleteRoleCallback(CallbackData, prefix="dR"):
   bot_id: int
-  perm: str
+  role_id: int
+class DeleteRoleFSM(StatesGroup):
+  deleteRole = State()
 
 @roles_router.callback_query(EditRoleCallback.filter())
 async def edit_role_callback(callback_query: CallbackQuery, callback_data: EditRoleCallback, state: FSMContext):
@@ -48,7 +50,7 @@ async def edit_role_callback(callback_query: CallbackQuery, callback_data: EditR
   builder.row(InlineKeyboardButton(text="Редактировать разрешения ✏️", callback_data=EditRolePermissionsCallback(bot_id=bot_id, perm="").pack()))
   # builder.row(InlineKeyboardButton(text="Изменить цвет ⚪️", callback_data="В"))
   builder.row(InlineKeyboardButton(text=f"Показывать людей с ролью отдельно: {"Да" if role.hoist else "Нет"}", callback_data=EditRoleCallback(server_id=guild_id, bot_id=bot_id, role_id=role.id, action=1).pack()))
-  builder.row(InlineKeyboardButton(text="Удалить роль ❌", callback_data="В"))
+  builder.row(InlineKeyboardButton(text="Удалить роль ❌", callback_data=DeleteRoleCallback(bot_id=bot_id, role_id=role_id).pack()))
   builder.row(InlineKeyboardButton(text=f"🔙 Назад", callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=role.id, action=0).pack()))
 
   text = [
@@ -97,3 +99,39 @@ async def edit_role_permissions_callback(callback_query: CallbackQuery, callback
   builder.row(InlineKeyboardButton(text=f"🔙 Назад", callback_data=EditRoleCallback(bot_id=bot_id, server_id=guild_id, role_id=role.id, action=0).pack()))
 
   await callback_query.message.edit_text(f"<b>Права роли</b> {role.name}", reply_markup=builder.as_markup())
+
+@roles_router.callback_query(DeleteRoleCallback.filter())
+async def delete_role_callback(callback_query: CallbackQuery, callback_data: DeleteRoleCallback, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = callback_data.bot_id
+  role_id = state_data["role_id"]
+
+  # guild = await get_guild(bot_id, guild_id)
+  # role = await guild.get_role(role_id)
+
+  await state.set_state(DeleteRoleFSM.deleteRole)
+  await state.update_data(bot_id=bot_id)
+
+  builder = InlineKeyboardBuilder()
+  builder.row(InlineKeyboardButton(text='🔙 Назад', callback_data=EditRoleCallback(bot_id=bot_id, server_id=guild_id, role_id=role_id, action=0).pack()))
+
+  await callback_query.message.edit_text("Вы уверенны? Для того чтобы удалить роль поставьте любую реакцию", reply_markup=builder.as_markup())
+
+@roles_router.message_reaction(DeleteRoleFSM.deleteRole)
+async def delete_role_reaction_handler(message_reaction: MessageReactionUpdated, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = state_data["bot_id"]
+  role_id = state_data["role_id"]
+
+  guild = await get_guild(bot_id, guild_id)
+  role = guild.get_role(role_id)
+
+  await role.delete()
+  await message_reaction.bot.delete_message(message_id=message_reaction.message_id, chat_id=message_reaction.chat.id)
+
+  builder = InlineKeyboardBuilder()
+  builder.row(InlineKeyboardButton(text='🔙 Назад', callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=0, action=0).pack()))
+
+  await message_reaction.bot.send_message(message_reaction.chat.id, "Успешно", reply_markup=builder.as_markup())

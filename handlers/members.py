@@ -52,7 +52,7 @@ class DeleteRoleFSM(StatesGroup):
 def get_member_keyboard(bot_id, guild_id, member):
   builder = InlineKeyboardBuilder()
 
-  builder.row(InlineKeyboardButton(text="Редактировать профиль сервера 📝", callback_data=EditMemberProfileCallback(bot_id=bot_id, server_id=guild_id, member_id=member.id).pack()))
+  # builder.row(InlineKeyboardButton(text="Редактировать профиль сервера 📝", callback_data=EditMemberProfileCallback(bot_id=bot_id, server_id=guild_id, member_id=member.id).pack()))
   builder.row(InlineKeyboardButton(text="Редактировать роли ✏️", callback_data=EditMemberRolesCallback(bot_id=bot_id, server_id=guild_id, member_id=member.id).pack()))
 
   builder.row(InlineKeyboardButton(text="Забанить 🚫", callback_data=BanMemberCallback(bot_id=bot_id, server_id=guild_id, member_id=member.id).pack()))
@@ -208,6 +208,9 @@ async def delete_role_reaction_handler(message_reaction: MessageReactionUpdated,
   await message_reaction.bot.delete_message(message_id=message_reaction.message_id, chat_id=message_reaction.chat.id)
   await message_reaction.bot.send_message(chat_id=message_reaction.chat.id, text="Роль успешно убрана ✅", reply_markup=builder.as_markup())
 
+class AddRoleToMemberCallback(CallbackData, prefix='adrm'):
+  role_id: int
+
 @members_router.callback_query(F.data == "add_role_to_member")
 async def edit_member_roles_callback(callback_query: CallbackQuery, state: FSMContext):
   state_data = await state.get_data()
@@ -215,15 +218,49 @@ async def edit_member_roles_callback(callback_query: CallbackQuery, state: FSMCo
   bot_id = state_data['bot_id']
   member_id = state_data['member_id']
   guild = await get_guild(bot_id, guild_id)
+  member = guild.get_member(member_id)
+
+  if not guild.me.guild_permissions.manage_roles:
+    await callback_query.answer("У бота нет прав на редактирование ролей")
+    return
 
   guild_roles = guild.roles[::-1]
+  member_roles = member.roles
 
   builder = InlineKeyboardBuilder()
 
   for role in guild_roles:
-    if role.position < guild.self_role.position and role.name != "@everyone":
-      builder.row(InlineKeyboardButton(text=f"{role.name}", callback_data="q"))
+    if role.position < guild.self_role.position and role.name != "@everyone" and not (role in member_roles):
+      builder.row(InlineKeyboardButton(text=f"{role.name}", callback_data=AddRoleToMemberCallback(role_id=role.id).pack()))
   
   builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=EditMemberRolesCallback(bot_id=bot_id, server_id=guild_id, member_id=member_id).pack()))
 
   await callback_query.message.edit_text("<b>Выберите роль</b>", reply_markup=builder.as_markup())
+
+@members_router.callback_query(AddRoleToMemberCallback.filter())
+async def add_role_to_member(callback_query: CallbackQuery, callback_data: AddRoleToMemberCallback, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = state_data['bot_id']
+  member_id = state_data['member_id']
+  role_id = callback_data.role_id
+
+  guild = await get_guild(bot_id, guild_id)
+  member = guild.get_member(member_id)
+  role = guild.get_role(role_id)
+
+  await member.add_roles(role)
+
+  guild_roles = guild.roles[::-1]
+  member_roles = member.roles
+
+  builder = InlineKeyboardBuilder()
+
+  for role in guild_roles:
+    if role.position < guild.self_role.position and role.name != "@everyone" and not (role in member_roles):
+      builder.row(InlineKeyboardButton(text=f"{role.name}", callback_data=AddRoleToMemberCallback(role_id=role.id).pack()))
+  
+  builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=EditMemberRolesCallback(bot_id=bot_id, server_id=guild_id, member_id=member_id).pack()))
+
+  await callback_query.answer("Успешно")
+  await callback_query.message.edit_reply_markup(reply_markup=builder.as_markup())
