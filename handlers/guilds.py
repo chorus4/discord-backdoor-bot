@@ -53,9 +53,13 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   builder.add(InlineKeyboardButton(text="Участники 👥", callback_data=GetMembersCallback(bot_id=bot_id, server_id=guild_id, offset=0).pack()))
   builder.add(InlineKeyboardButton(text="Каналы 📺", callback_data=GetChannelsCallback(bot_id=bot_id, server_id=guild_id, offset=0, filter=0).pack()))
   builder.add(InlineKeyboardButton(text="Роли 👀", callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=0, action=0).pack()))
-  builder.add(InlineKeyboardButton(text="Действия 🤖", callback_data=GetAuditCallback(bot_id=bot_id, server_id=guild_id).pack()))
+  builder.add(InlineKeyboardButton(text="Журнал аудита 🤖", callback_data=GetAuditCallback(bot_id=bot_id, server_id=guild_id).pack()))
   
   builder.adjust(2, 2)
+
+  builder.row(InlineKeyboardButton(text="Создать ссылку-приглашение 🔗", callback_data="q"))
+  builder.row(InlineKeyboardButton(text="Зачистка логов 🧹", callback_data="q"))
+  builder.add(InlineKeyboardButton(text="Снос сервера 🪓", callback_data="q"))
 
   builder.row(InlineKeyboardButton(text="Покинуть сервер ❌", callback_data=GetAuditCallback(bot_id=bot_id, server_id=guild_id).pack()))
   builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=GetBotServersCallback(bot_id=bot_id).pack()))
