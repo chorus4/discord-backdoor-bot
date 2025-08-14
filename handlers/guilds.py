@@ -41,10 +41,18 @@ class GetAuditCallback(CallbackData, prefix="getAudit"):
   bot_id: int
   server_id: int
 
+class CreateInviteCallback(CallbackData, prefix="createInvite"):
+  bot_id: int
+  server_id: int
+
 @guilds_router.callback_query(GetServerCallback.filter())
 async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetServerCallback, state: FSMContext):
+  state_data = await state.get_data()
   guild_id = callback_data.server_id
   bot_id = callback_data.bot_id
+  if not "max_age" in state_data:
+    await state.update_data(max_age=0, max_uses=0, temporary=False)
+  await state.update_data(bot_id=bot_id, guild_id=guild_id)
 
   guild = await get_guild(bot_id, guild_id)
 
@@ -57,7 +65,7 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   
   builder.adjust(2, 2)
 
-  builder.row(InlineKeyboardButton(text="Создать ссылку-приглашение 🔗", callback_data="q"))
+  builder.row(InlineKeyboardButton(text="Ссылки-приглашения 🔗", callback_data='get_invites'))
   builder.row(InlineKeyboardButton(text="Зачистка логов 🧹", callback_data="q"))
   builder.add(InlineKeyboardButton(text="Снос сервера 🪓", callback_data="q"))
 
@@ -240,3 +248,30 @@ async def get_roles_callback(callback_query: CallbackQuery, callback_data: GetRo
   builder.row(InlineKeyboardButton(text=f"🔙 Назад", callback_data=GetServerCallback(bot_id=bot_id, server_id=guild_id).pack()))
   
   await callback_query.message.edit_text(f"<b>Роли сервера</b> {guild.name}", reply_markup=builder.as_markup())
+
+@guilds_router.callback_query(GetAuditCallback.filter())
+async def get_audit_callback(callback_query: CallbackQuery, callback_data: GetAuditCallback, state: FSMContext):
+  bot_id = callback_data.bot_id
+  guild_id = callback_data.server_id
+
+  guild = await get_guild(bot_id, guild_id)
+
+  if not guild.me.guild_permissions.view_audit_log:
+    await callback_query.answer("У бота нет прав на просмотр журнала аудита")
+    return
+
+  audit_logs = guild.audit_logs(limit=20)
+
+  text = [
+    f"<b>Логи сервера</b> {guild.name}",
+    ""
+  ]
+
+  async for log in audit_logs:
+    text.append(f"{log.user.name} - {log.action}")
+
+  text = '\n'.join(text)
+  builder = InlineKeyboardBuilder()
+  builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=GetServerCallback(bot_id=bot_id, server_id=guild_id).pack()))
+
+  await callback_query.message.edit_text(text, reply_markup=builder.as_markup())

@@ -2,6 +2,7 @@ import discord
 from sqlmodel import select
 from sqlmodel import Session as SQLSession
 import asyncio
+from discord import Guild
 
 import db
 from db.models.dsBots import DsBot
@@ -15,7 +16,7 @@ async def get_all_guilds(bot_id):
 
   return client.guilds
 
-async def get_guild(bot_id, guild_id):
+async def get_guild(bot_id, guild_id) -> Guild:
   session = SQLSession(db.engine)
   bot = session.exec(select(DsBot).where(DsBot.id == bot_id)).first()
   client = botStorage.get_bot(bot.id)
