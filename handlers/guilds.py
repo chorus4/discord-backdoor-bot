@@ -52,7 +52,7 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   bot_id = callback_data.bot_id
   if not "max_age" in state_data:
     await state.update_data(max_age=0, max_uses=0, temporary=False)
-  await state.update_data(bot_id=bot_id, guild_id=guild_id)
+  await state.update_data(bot_id=bot_id, guild_id=guild_id, confirmation_step=0)
 
   guild = await get_guild(bot_id, guild_id)
 

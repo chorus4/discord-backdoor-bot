@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from discord import ChannelType
+from discord import ChannelType, Forbidden
 from discord import Status
 
 import ds
@@ -97,6 +97,7 @@ async def get_member_callback(callback_query: CallbackQuery, callback_data: GetM
   member_id = callback_data.member_id
   guild = await get_guild(bot_id, guild_id)
   member = guild.get_member(member_id)
+  await state.update_data(confirmation_step=0)
 
   await callback_query.message.edit_text(get_member_text(member, guild), reply_markup=get_member_keyboard(bot_id, guild_id, member))
 
@@ -264,3 +265,54 @@ async def add_role_to_member(callback_query: CallbackQuery, callback_data: AddRo
 
   await callback_query.answer("Успешно")
   await callback_query.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+@members_router.callback_query(BanMemberCallback.filter())
+async def ban_member(callback_query: CallbackQuery, callback_data: BanMemberCallback, state: FSMContext):
+  guild_id = callback_data.server_id
+  bot_id = callback_data.bot_id
+  member_id = callback_data.member_id
+  state_data = await state.get_data()
+  confirmation_step = state_data['confirmation_step']
+  guild = await get_guild(bot_id, guild_id)
+  member = guild.get_member(member_id)
+
+  if not guild.me.guild_permissions.ban_members:
+    await callback_query.answer("У бота нет прав на то чтобы банить участников")
+    return
+
+  if confirmation_step == 0:
+    await callback_query.answer("Нажмите ещё раз для подтверждения")
+    await state.update_data(confirmation_step=1)
+    return
+
+  try:
+    await member.ban()
+    await callback_query.answer("Успешно!")
+  except Forbidden:
+    await callback_query.answer("Бот не может забанить этого участника")
+
+@members_router.callback_query(KickMemberCallback.filter())
+async def ban_member(callback_query: CallbackQuery, callback_data: KickMemberCallback, state: FSMContext):
+  guild_id = callback_data.server_id
+  bot_id = callback_data.bot_id
+  member_id = callback_data.member_id
+  state_data = await state.get_data()
+  confirmation_step = state_data['confirmation_step']
+  guild = await get_guild(bot_id, guild_id)
+  member = guild.get_member(member_id)
+
+  if not guild.me.guild_permissions.ban_members:
+    await callback_query.answer("У бота нет прав на то чтобы кикать участников")
+    return
+
+  if confirmation_step == 0:
+    await callback_query.answer("Нажмите ещё раз для подтверждения")
+    await state.update_data(confirmation_step=1)
+    return
+
+  try:
+    await member.kick()
+    await callback_query.answer("Успешно!")
+  except Forbidden:
+    await callback_query.answer("Бот не может кикнуть этого участника")
+
