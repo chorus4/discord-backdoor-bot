@@ -27,8 +27,9 @@ class EditRolePermissionsCallback(CallbackData, prefix="eRP"):
 class DeleteRoleCallback(CallbackData, prefix="dR"):
   bot_id: int
   role_id: int
-class DeleteRoleFSM(StatesGroup):
+class RoleFSM(StatesGroup):
   deleteRole = State()
+  setRoleName = State()
 
 @roles_router.callback_query(EditRoleCallback.filter())
 async def edit_role_callback(callback_query: CallbackQuery, callback_data: EditRoleCallback, state: FSMContext):
@@ -110,7 +111,7 @@ async def delete_role_callback(callback_query: CallbackQuery, callback_data: Del
   # guild = await get_guild(bot_id, guild_id)
   # role = await guild.get_role(role_id)
 
-  await state.set_state(DeleteRoleFSM.deleteRole)
+  await state.set_state(RoleFSM.deleteRole)
   await state.update_data(bot_id=bot_id)
 
   builder = InlineKeyboardBuilder()
@@ -118,7 +119,7 @@ async def delete_role_callback(callback_query: CallbackQuery, callback_data: Del
 
   await callback_query.message.edit_text("Вы уверенны? Для того чтобы удалить роль поставьте любую реакцию", reply_markup=builder.as_markup())
 
-@roles_router.message_reaction(DeleteRoleFSM.deleteRole)
+@roles_router.message_reaction(RoleFSM.deleteRole)
 async def delete_role_reaction_handler(message_reaction: MessageReactionUpdated, state: FSMContext):
   state_data = await state.get_data()
   guild_id = state_data["guild_id"]
@@ -135,3 +136,33 @@ async def delete_role_reaction_handler(message_reaction: MessageReactionUpdated,
   builder.row(InlineKeyboardButton(text='🔙 Назад', callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=0, action=0).pack()))
 
   await message_reaction.bot.send_message(message_reaction.chat.id, "Успешно", reply_markup=builder.as_markup())
+
+@roles_router.callback_query(F.data == "create_role")
+async def crate_role(callback_query: CallbackQuery, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = state_data['bot_id']
+
+  builder = InlineKeyboardBuilder()
+  builder.row(InlineKeyboardButton(text='🔙 Назад', callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=0, action=0).pack()))
+
+  msg = await callback_query.message.edit_text("Ведите название роли", reply_markup=builder.as_markup())
+  await state.set_state(RoleFSM.setRoleName)
+  await state.update_data(msg_id=msg.message_id)
+
+@roles_router.message(RoleFSM.setRoleName)
+async def add_role_handler(message: Message, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = state_data['bot_id']
+  msg_id = state_data['msg_id']
+
+  guild = await get_guild(bot_id, guild_id)
+
+  await message.delete()
+
+  builder = InlineKeyboardBuilder()
+  builder.row(InlineKeyboardButton(text='🔙 Назад', callback_data=GetRolesCallback(bot_id=bot_id, server_id=guild_id, role_id=0, action=0).pack()))
+
+  await guild.create_role(name=message.text)
+  await message.bot.edit_message_text("Успешно", chat_id=message.chat.id, message_id=msg_id, reply_markup=builder.as_markup())

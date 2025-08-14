@@ -210,7 +210,7 @@ async def get_roles_callback(callback_query: CallbackQuery, callback_data: GetRo
 
   builder = InlineKeyboardBuilder()
 
-  builder.row(InlineKeyboardButton(text="Создать роль ➕", callback_data="q"))
+  builder.row(InlineKeyboardButton(text="Создать роль ➕", callback_data="create_role"))
 
   if action == 1 or action == 2: # Перемещение ролей
     if not guild.me.guild_permissions.manage_roles:
