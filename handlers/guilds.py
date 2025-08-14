@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
+from aiogram.fsm.strategy import FSMStrategy
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, MessageReactionUpdated
@@ -69,7 +70,7 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   builder.row(InlineKeyboardButton(text="Зачистка логов 🧹", callback_data="q"))
   builder.add(InlineKeyboardButton(text="Снос сервера 🪓", callback_data="q"))
 
-  builder.row(InlineKeyboardButton(text="Покинуть сервер ❌", callback_data=GetAuditCallback(bot_id=bot_id, server_id=guild_id).pack()))
+  builder.row(InlineKeyboardButton(text="Покинуть сервер ❌", callback_data='leave-server'))
   builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=GetBotServersCallback(bot_id=bot_id).pack()))
 
   text = [
@@ -275,3 +276,14 @@ async def get_audit_callback(callback_query: CallbackQuery, callback_data: GetAu
   builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=GetServerCallback(bot_id=bot_id, server_id=guild_id).pack()))
 
   await callback_query.message.edit_text(text, reply_markup=builder.as_markup())
+
+@guilds_router.callback_query(F.data == 'leave-server')
+async def leave_server(callback_query: CallbackQuery, state: FSMContext):
+  state_data = await state.get_data()
+  guild_id = state_data["guild_id"]
+  bot_id = state_data['bot_id']
+
+  guild = await get_guild(bot_id, guild_id)
+
+  await guild.leave()
+  await callback_query.answer('Успешно')
