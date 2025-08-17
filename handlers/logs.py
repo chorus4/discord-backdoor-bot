@@ -42,6 +42,10 @@ async def clear_logs_callback(callback_query: CallbackQuery, state: FSMContext):
 
   guild = await get_guild(bot_id, guild_id)
 
+  if not guild.me.guild_permissions.create_instant_invite and guild.me.guild_permissions.manage_channels:
+    await callback_query.answer("У бота нету прав на создание приглашений и управление каналами")
+    return
+
   await state.set_state()
   await callback_query.message.edit_text(await get_clear_logs_preparation_text(), reply_markup=await get_clear_logs_preparation_keyboard(state_data))
 
