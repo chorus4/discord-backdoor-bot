@@ -14,6 +14,7 @@ from handlers.guilds import guilds_router
 from handlers.members import members_router
 from handlers.roles import roles_router
 from handlers.invite import invite_router
+from handlers.logs import logs_router
 
 from ds import prepare_bots
 
@@ -33,7 +34,8 @@ async def main():
     guilds_router,
     members_router,
     roles_router,
-    invite_router
+    invite_router,
+    logs_router
   )
 
   try:

